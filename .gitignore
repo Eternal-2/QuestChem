@@ -1,0 +1,25 @@
+# Dependencies (Folder installan npm)
+node_modules/
+
+# Next.js Build dan Cache (BIANG KEROK FILE BESAR > 100MB)
+.next/
+out/
+build/
+
+# Production / Environment Variables (Sangat Rahasia!)
+.env
+.env.local
+.env.production
+.env.development
+.env.local.errors
+
+# File OS / IDE Sampah
+.DS_Store
+*.pem
+.vscode/
+.idea/
+
+# File Kompresi besar yang tidak perlu di Git
+*.zip
+*.rar
+*.tar.gz

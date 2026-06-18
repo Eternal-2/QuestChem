@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --questchem-blue:       #2563EB;
+  --questchem-blue-light: #EFF6FF;
+  --questchem-purple:     #7C3AED;
+  --questchem-green:      #16A34A;
+  --questchem-sidebar-w:  240px;
+}
+
+@layer base {
+  * { box-sizing: border-box; }
+  body {
+    @apply antialiased;
+  }
+}
+
+@layer utilities {
+  .border-rarity-common    { border-color: #D1D5DB; }
+  .border-rarity-rare      { border-color: #60A5FA; }
+  .border-rarity-epic      { border-color: #A855F7; }
+  .border-rarity-legendary { border-color: #F59E0B; }
+  .border-rarity-mythic    { border-color: #EC4899; }
+  .xp-bar-fill { @apply transition-all duration-700 ease-out; }
+}
