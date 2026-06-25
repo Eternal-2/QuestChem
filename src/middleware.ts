@@ -9,14 +9,9 @@ export async function middleware(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll() {
-          return request.cookies.getAll()
-        },
-        // ✅ FIX Bug #2: buat NextResponse baru SEKALI, bukan di dalam loop
+        getAll() { return request.cookies.getAll() },
         setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          )
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
           supabaseResponse = NextResponse.next({ request })
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, { ...options, path: '/' })
@@ -29,37 +24,42 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   const pathname = request.nextUrl.pathname
 
-  // ✅ FIX Bug #1: /auth/callback HARUS diexclude, jangan disentuh middleware
-  if (pathname.startsWith('/auth/callback')) {
-    return supabaseResponse
-  }
+  // Selalu bypass auth callback
+  if (pathname.startsWith('/auth/')) return supabaseResponse
 
-  // 1. UBAH BAGIAN INI: Hapus /guru, ganti jadi /login-guru
   const publicRoutes = ['/', '/login', '/register', '/login-guru']
-  const isPublic = publicRoutes.some(route => pathname === route)
+  const isPublic = publicRoutes.some(r => pathname === r)
 
   if (!user && !isPublic) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // 2. UBAH BAGIAN INI: Tambahkan /login-guru agar kalau sudah login, tidak bisa buka halaman login lagi
-  if (user && (pathname === '/login' || pathname === '/register' || pathname === '/login-guru')) {
-    return NextResponse.redirect(new URL('/murid/home', request.url))
-  }
-
-  // Role-based protection
   if (user) {
-    const { data: userData, error } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single()
+    // ✅ OPTIMASI: Baca role dari user_metadata — 0 query DB
+    const role = user.user_metadata?.role as string | undefined
 
-    if (!error && userData) {
-      const role = userData.role
-      if (pathname.startsWith('/guru') && role !== 'teacher' && role !== 'admin') {
-        return NextResponse.redirect(new URL('/murid/home', request.url))
+    // Kalau belum ada role di metadata, fallback query DB sekali
+    let resolvedRole = role
+    if (!resolvedRole) {
+      const { data } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+      resolvedRole = data?.role
+    }
+
+    // Redirect dari halaman auth kalau sudah login
+    if (pathname === '/login' || pathname === '/register' || pathname === '/login-guru') {
+      if (resolvedRole === 'teacher' || resolvedRole === 'admin') {
+        return NextResponse.redirect(new URL('/guru/home', request.url))
       }
+      return NextResponse.redirect(new URL('/murid/home', request.url))
+    }
+
+    // Proteksi route guru
+    if (pathname.startsWith('/guru') && resolvedRole !== 'teacher' && resolvedRole !== 'admin') {
+      return NextResponse.redirect(new URL('/murid/home', request.url))
     }
   }
 
@@ -67,7 +67,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
-  ],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
 }

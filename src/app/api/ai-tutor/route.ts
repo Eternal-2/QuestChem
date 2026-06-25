@@ -1,4 +1,4 @@
-// POST /api/ai-tutor — Professor Nova AI chat
+// POST /api/ai-tutor — Professor Nova AI chat (Gemini)
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
 
     if (!profile) return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
 
-    // Get chat history for context (last 10 messages)
+    // Get chat history (last 10 messages)
     const { data: history } = await supabase
       .from('ai_chat_logs')
       .select('role, message')
@@ -35,33 +35,38 @@ export async function POST(request: Request) {
       .order('created_at', { ascending: true })
       .limit(10)
 
-    // Build messages for OpenAI
-    const systemPrompt = `You are Professor Nova, a friendly and encouraging chemistry tutor in QuestChem — a gamified chemistry learning platform. 
-The student is Level ${profile.level} with Chemistry Knowledge Level ${profile.chemistry_knowledge_level}.
-Your role: explain chemistry concepts clearly, give hints without spoiling answers, celebrate progress, and keep the student motivated.
-Always respond in the language the student uses. Keep responses concise (2-4 sentences max unless explaining a complex concept).
-Topic context: ${topic ?? 'general chemistry'}.`
+    const systemPrompt = `Kamu adalah Professor Nova, tutor kimia yang ramah dan menyemangati di QuestChem — platform belajar kimia berbasis gamifikasi.
+Siswa ini berada di Level ${profile.level ?? 1} dengan tingkat pengetahuan kimia: ${profile.chemistry_knowledge_level ?? 'pemula'}.
+Tugasmu: jelaskan konsep kimia dengan jelas, beri petunjuk tanpa langsung memberi jawaban, rayakan kemajuan siswa, dan jaga semangat belajar mereka.
+Selalu jawab dalam Bahasa Indonesia kecuali siswa bertanya dalam bahasa lain.
+Jawaban singkat dan padat (2-4 kalimat) kecuali menjelaskan konsep kompleks.
+Konteks topik: ${topic ?? 'kimia umum'}.`
 
-    const messages = [
-      ...(history?.map(h => ({ role: h.role as 'user' | 'assistant', content: h.message })) ?? []),
-      { role: 'user' as const, content: message },
-    ]
+    // Build Gemini conversation history
+    const geminiHistory = history?.map(h => ({
+      role: h.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: h.message }],
+    })) ?? []
 
-    // Call OpenAI (Fase 2: uncomment when API key is set)
-    let aiResponse = "I'm Professor Nova! I'll be fully operational soon. For now, keep practicing your chemistry quests! 🧪"
+    let aiResponse = "Halo! Aku Professor Nova! Aku akan segera aktif penuh. Untuk sekarang, terus latih quest kimiamu ya! 🧪"
 
-    if (process.env.OPENAI_API_KEY) {
-      const { OpenAI } = await import('openai')
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-      const completion = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [{ role: 'system', content: systemPrompt }, ...messages],
-        max_tokens: 300,
+    if (process.env.GEMINI_API_KEY) {
+      const { GoogleGenerativeAI } = await import('@google/generative-ai')
+      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
+      const model = genAI.getGenerativeModel({
+        model: 'gemini-2.5-flash',
+        systemInstruction: systemPrompt,
       })
-      aiResponse = completion.choices[0].message.content ?? aiResponse
+
+      const chat = model.startChat({
+        history: geminiHistory,
+      })
+
+      const result = await chat.sendMessage(message)
+      aiResponse = result.response.text()
     }
 
-    // Save both messages to DB
+    // Simpan ke DB
     const sid = session_id ?? crypto.randomUUID()
     await supabase.from('ai_chat_logs').insert([
       { student_id: profile.id, session_id: sid, role: 'user',      message, topic },
@@ -73,6 +78,7 @@ Topic context: ${topic ?? 'general chemistry'}.`
     if (err instanceof z.ZodError) {
       return NextResponse.json({ error: err.issues }, { status: 400 })
     }
+    console.error('AI Tutor error:', err)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

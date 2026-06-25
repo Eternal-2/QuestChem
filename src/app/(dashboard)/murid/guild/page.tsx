@@ -1,200 +1,196 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 
 export default async function GuildPage() {
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
+  // Ambil student profile
   const { data: profile } = await supabase
     .from('student_profiles')
-    .select('id')
+    .select('id, level, xp, title')
     .eq('user_id', user.id)
     .single()
 
-  // Check if student is in a guild
-  const { data: membership } = await supabase
-    .from('guild_members')
-    .select('*, guilds(*)')
-    .eq('student_id', profile?.id)
-    .single()
-
-  const guild = (membership as any)?.guilds
-
-  if (!guild) {
-    // Not in a guild — show join/create
-    const { data: topGuilds } = await supabase
-      .from('guilds')
-      .select('*, guild_members(count)')
-      .order('total_xp', { ascending: false })
-      .limit(5)
-
-    return (
-      <div className="max-w-3xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">🏰 Guild Hall</h1>
-          <p className="text-gray-500 text-sm mt-0.5">Join a guild to participate in raids and earn bonus XP</p>
-        </div>
-
-        <div className="bg-white rounded-2xl border border-gray-100 p-6 mb-6 text-center">
-          <div className="text-5xl mb-3">🏰</div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-1">You're not in a guild yet</h2>
-          <p className="text-gray-500 text-sm mb-5">Join an existing guild or create your own!</p>
-          <div className="flex gap-3 justify-center">
-            <button className="px-6 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors">
-              + Create Guild
-            </button>
-          </div>
-        </div>
-
-        {/* Top guilds */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-5">
-          <h3 className="font-semibold text-gray-900 mb-4">🌟 Top Guilds</h3>
-          <div className="space-y-3">
-            {topGuilds?.map((g, i) => (
-              <div key={g.id} className="flex items-center gap-4 p-3 rounded-xl hover:bg-gray-50 transition-colors">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${i === 0 ? 'bg-yellow-100 text-yellow-700' : i === 1 ? 'bg-gray-100 text-gray-600' : 'bg-orange-50 text-orange-600'}`}>
-                  #{i + 1}
-                </div>
-                <div className="flex-1">
-                  <div className="font-medium text-gray-900 text-sm">{g.name}</div>
-                  <div className="text-xs text-gray-400">Level {g.level} • {g.total_xp.toLocaleString()} XP</div>
-                </div>
-                <button className="text-xs text-blue-600 border border-blue-200 px-3 py-1.5 rounded-full hover:bg-blue-50 transition-colors font-medium">
-                  Join
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // In a guild — show guild page
-  const { data: members } = await supabase
-    .from('guild_members')
-    .select('*, student_profiles(*, users(username, display_name))')
-    .eq('guild_id', guild.id)
-    .order('xp_contributed', { ascending: false })
-
-  const raidBoss = guild.raid_boss ?? {}
-  const raidHpPct = raidBoss.hp_max ? Math.round((raidBoss.hp_current / raidBoss.hp_max) * 100) : 0
+  // Ambil semua kelas yang diikuti beserta anggota
+  const { data: myClasses } = await supabase
+    .from('class_members')
+    .select(`
+      class_id,
+      joined_at,
+      classes(
+        id, name, cohort, join_code,
+        users(display_name, username)
+      )
+    `)
+    .eq('student_id', profile?.id ?? '')
+    .order('joined_at', { ascending: false })
 
   return (
-    <div className="max-w-5xl mx-auto">
-      {/* Guild banner */}
-      <div className="relative bg-gradient-to-br from-blue-900 via-purple-900 to-blue-800 rounded-2xl overflow-hidden mb-6 p-6">
-        <div className="absolute inset-0 opacity-20 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-yellow-400 via-transparent to-transparent" />
-        <div className="relative flex items-end gap-4">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="bg-purple-500 text-white text-xs px-2.5 py-0.5 rounded-full font-medium">⚙️ Lvl {guild.level}</span>
-              {guild.rank && <span className="bg-white/20 text-white text-xs px-2.5 py-0.5 rounded-full">Rank #{guild.rank}</span>}
-            </div>
-            <h1 className="text-3xl font-bold text-white">{guild.name}</h1>
-            {guild.description && <p className="text-blue-200 text-sm mt-1">{guild.description}</p>}
+    <div className="min-h-screen bg-[#080c14] text-white font-sans">
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-[-20%] right-[-10%] w-[500px] h-[500px] bg-purple-500/5 rounded-full filter blur-[120px]" />
+        <div className="absolute bottom-[-20%] left-[-10%] w-[400px] h-[400px] bg-teal-500/5 rounded-full filter blur-[120px]" />
+      </div>
+
+      <div className="relative z-10 max-w-5xl mx-auto px-6 py-8 space-y-6">
+
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-black text-white flex items-center gap-2">
+              ⚔️ Guild Saya
+            </h1>
+            <p className="text-slate-400 text-sm mt-0.5">Kelas yang kamu ikuti dan anggota di dalamnya</p>
           </div>
-          <button className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-5 py-2.5 rounded-xl transition-colors">
-            Join Raid
-          </button>
+          <Link
+            href="/murid/gabung-kelas"
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-500/20 to-cyan-500/10 border border-teal-500/30 hover:border-teal-400/50 text-teal-400 hover:text-teal-300 rounded-xl text-sm font-semibold transition-all"
+          >
+            🏰 + Gabung Kelas
+          </Link>
+        </div>
+
+        {/* Belum ikut kelas */}
+        {(!myClasses || myClasses.length === 0) && (
+          <div className="bg-slate-900/60 backdrop-blur border border-slate-700/50 rounded-2xl p-12 text-center">
+            <div className="text-5xl mb-4">⚔️</div>
+            <h3 className="text-lg font-bold text-white mb-2">Belum ada guild</h3>
+            <p className="text-slate-400 text-sm mb-6">Bergabung ke kelas untuk mulai berpetualang bersama teman!</p>
+            <Link
+              href="/murid/gabung-kelas"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-500 to-cyan-600 text-white font-bold rounded-xl text-sm transition-all shadow-[0_0_20px_rgba(45,212,191,0.2)]"
+            >
+              🏰 Gabung Kelas Sekarang
+            </Link>
+          </div>
+        )}
+
+        {/* List kelas */}
+        {myClasses && myClasses.map((mc: any) => {
+          const kelas = mc.classes
+          if (!kelas) return null
+
+          return (
+            <GuildCard
+              key={mc.class_id}
+              kelasId={kelas.id}
+              kelasName={kelas.name}
+              cohort={kelas.cohort}
+              teacherName={kelas.users?.display_name ?? kelas.users?.username ?? 'Guru'}
+              joinCode={kelas.join_code}
+              joinedAt={mc.joined_at}
+              myProfileId={profile?.id}
+            />
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// Komponen card per kelas dengan fetch anggota sendiri
+async function GuildCard({
+  kelasId, kelasName, cohort, teacherName, joinCode, joinedAt, myProfileId
+}: {
+  kelasId: string
+  kelasName: string
+  cohort: string | null
+  teacherName: string
+  joinCode: string
+  joinedAt: string
+  myProfileId: string | undefined
+}) {
+  const supabase = await createServerSupabaseClient()
+
+  const { data: members } = await supabase
+    .from('class_members')
+    .select('student_id, joined_at, student_profiles(id, level, xp, title, users(display_name, username))')
+    .eq('class_id', kelasId)
+    .order('student_profiles(xp)', { ascending: false })
+
+  const totalMembers = members?.length ?? 0
+
+  return (
+    <div className="bg-slate-900/60 backdrop-blur border border-slate-700/50 rounded-2xl overflow-hidden">
+      {/* Header kelas */}
+      <div className="p-5 border-b border-slate-800 flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500/20 to-indigo-500/10 border border-purple-500/30 flex items-center justify-center text-2xl">
+            🏰
+          </div>
+          <div>
+            <h2 className="font-black text-white">{kelasName}</h2>
+            <div className="flex items-center gap-2 text-xs text-slate-400 mt-0.5">
+              {cohort && <span>{cohort}</span>}
+              {cohort && <span>·</span>}
+              <span>👨‍🏫 {teacherName}</span>
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="text-center">
+            <div className="text-lg font-black text-white">{totalMembers}</div>
+            <div className="text-xs text-slate-500">Anggota</div>
+          </div>
+          <div className="bg-teal-500/10 border border-teal-500/30 rounded-xl px-3 py-2">
+            <div className="text-xs text-slate-400 mb-0.5">Kode</div>
+            <div className="font-mono font-black text-teal-400 tracking-widest text-sm">{joinCode}</div>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-6">
-        {/* Left: Raid boss + members */}
-        <div className="col-span-2 space-y-5">
-          {/* Active raid boss */}
-          {raidBoss.is_active ? (
-            <div className="bg-red-50 border border-red-200 rounded-2xl p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-red-500">⚠️</span>
-                <span className="font-semibold text-red-700">Active Guild Raid</span>
-              </div>
-              <div className="flex items-start gap-4">
-                <div className="w-20 h-20 bg-red-900 rounded-xl flex items-center justify-center text-4xl flex-shrink-0">👹</div>
-                <div className="flex-1">
-                  <h3 className="text-xl font-bold text-red-800 mb-1">{raidBoss.name}</h3>
-                  <p className="text-sm text-red-600 mb-3">Combine balancing equations to chip away its armor!</p>
-                  <div className="h-3 bg-red-200 rounded-full overflow-hidden mb-1">
-                    <div className="h-full bg-red-500 rounded-full transition-all" style={{ width: `${raidHpPct}%` }} />
+      {/* Leaderboard anggota */}
+      <div className="p-4">
+        <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Peringkat Anggota</p>
+        <div className="space-y-2">
+          {members?.map((m: any, i: number) => {
+            const sp = m.student_profiles
+            const name = sp?.users?.display_name ?? sp?.users?.username ?? 'Siswa'
+            const isMe = sp?.id === myProfileId
+            const rankEmoji = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`
+
+            return (
+              <div
+                key={m.student_id}
+                className={`flex items-center gap-3 p-3 rounded-xl border transition-colors ${
+                  isMe
+                    ? 'bg-teal-500/10 border-teal-500/30'
+                    : 'bg-slate-800/40 border-slate-700/30 hover:bg-slate-800/70'
+                }`}
+              >
+                <span className="text-sm w-7 text-center flex-shrink-0 font-bold">
+                  {rankEmoji}
+                </span>
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                  isMe
+                    ? 'bg-teal-500 text-white'
+                    : 'bg-gradient-to-br from-purple-400 to-indigo-600 text-white'
+                }`}>
+                  {name.slice(0, 1).toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className={`text-sm font-semibold truncate ${isMe ? 'text-teal-300' : 'text-white'}`}>
+                      {name}
+                    </span>
+                    {isMe && (
+                      <span className="text-xs bg-teal-500/20 text-teal-400 border border-teal-500/30 px-1.5 py-0.5 rounded-full flex-shrink-0">
+                        Kamu
+                      </span>
+                    )}
                   </div>
-                  <div className="flex justify-between text-xs text-red-600">
-                    <span>HP: {raidBoss.hp_current?.toLocaleString()} / {raidBoss.hp_max?.toLocaleString()}</span>
-                    <span>{100 - raidHpPct}% Defeated</span>
-                  </div>
+                  <div className="text-xs text-slate-400">{sp?.title ?? 'Novice Chemist'} · Level {sp?.level ?? 1}</div>
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <div className="text-sm font-bold text-yellow-400">⭐ {(sp?.xp ?? 0).toLocaleString()}</div>
+                  <div className="text-xs text-slate-500">XP</div>
                 </div>
               </div>
-            </div>
-          ) : (
-            <div className="bg-gray-50 border border-gray-200 rounded-2xl p-5 text-center">
-              <div className="text-3xl mb-2">😴</div>
-              <p className="text-gray-500 text-sm">No active raid. The guild leader can start one!</p>
-            </div>
-          )}
-
-          {/* Tabs placeholder */}
-          <div className="bg-white rounded-2xl border border-gray-100">
-            <div className="flex border-b border-gray-100">
-              {['Members', 'Guild Chat', 'Missions', 'Achievements', 'Shop'].map((tab, i) => (
-                <button key={tab} className={`px-4 py-3 text-sm font-medium transition-colors ${i === 0 ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>
-                  {tab}
-                </button>
-              ))}
-            </div>
-            {/* Members table */}
-            <div className="p-4">
-              <div className="space-y-2">
-                {members?.map((m, i) => {
-                  const sp = (m as any).student_profiles
-                  const name = sp?.users?.display_name ?? sp?.users?.username ?? 'Alchemist'
-                  return (
-                    <div key={m.id} className="flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 transition-colors">
-                      <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 text-white ${['bg-purple-500','bg-blue-500','bg-green-500','bg-gray-400'][i % 4]}`}>
-                        {name.slice(0, 2).toUpperCase()}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium text-gray-800 truncate">{name}</div>
-                        <div className="text-xs text-gray-400">Level {sp?.level}</div>
-                      </div>
-                      <div className="text-xs font-semibold text-yellow-600">⭐ {m.xp_contributed.toLocaleString()} XP</div>
-                      <div className={`text-xs font-bold ${i === 0 ? 'text-yellow-500' : i === 1 ? 'text-gray-500' : i === 2 ? 'text-orange-500' : 'text-gray-400'}`}>
-                        #{i + 1}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Right: Top contributors */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-gray-900">Top Contributors</h3>
-            <span>🏆</span>
-          </div>
-          <div className="space-y-3">
-            {members?.slice(0, 4).map((m, i) => {
-              const sp = (m as any).student_profiles
-              const name = sp?.users?.display_name ?? sp?.users?.username ?? 'Alchemist'
-              const colors = ['bg-purple-500', 'bg-blue-500', 'bg-green-500', 'bg-gray-400']
-              const rankColors = ['text-yellow-500', 'text-gray-500', 'text-orange-500', 'text-gray-400']
-              return (
-                <div key={m.id} className={`flex items-center gap-3 p-3 rounded-xl ${i === 0 ? 'bg-yellow-50' : 'hover:bg-gray-50'} transition-colors`}>
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0 ${colors[i]}`}>
-                    L{sp?.level}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-semibold text-gray-800 truncate">{name}</div>
-                    <div className="text-xs text-gray-400">⭐ {m.xp_contributed.toLocaleString()} XP</div>
-                  </div>
-                  <div className={`text-sm font-bold ${rankColors[i]}`}>#{i + 1}</div>
-                </div>
-              )
-            })}
-          </div>
+            )
+          })}
         </div>
       </div>
     </div>

@@ -119,7 +119,7 @@ export default async function BackpackPage({
           <div className="text-5xl mb-3">🎒</div>
           <p className="font-medium">Your backpack is empty</p>
           <p className="text-sm mt-1">Complete quests to earn items!</p>
-          <a href="/quests" className="inline-block mt-4 px-6 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors">
+          <a href="/murid/quests" className="inline-block mt-4 px-6 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors">
             Go to Quests
           </a>
         </div>

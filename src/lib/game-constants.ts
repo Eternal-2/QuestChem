@@ -51,9 +51,9 @@ export const ELEMENT_AFFINITY_COLORS: Record<string, string> = {
 }
 
 export const NAV_ITEMS = [
-  { href: '/home',         label: 'Home',        icon: 'home' },
-  { href: '/world-map',    label: 'World Map',   icon: 'map' },
-  { href: '/virtual-lab',  label: 'Virtual Lab', icon: 'flask' },
-  { href: '/quests',       label: 'Quests',      icon: 'school' },
-  { href: '/ai-tutor',     label: 'AI Tutor',    icon: 'robot' },
+  { href: '/murid/home',         label: 'Home',        icon: 'home' },
+  { href: '/murid/world-map',    label: 'World Map',   icon: 'map' },
+  { href: '/murid/virtual-lab',  label: 'Virtual Lab', icon: 'flask' },
+  { href: '/murid/quests',       label: 'Quests',      icon: 'school' },
+  { href: '/murid/ai-tutor',     label: 'AI Tutor',    icon: 'robot' },
 ]

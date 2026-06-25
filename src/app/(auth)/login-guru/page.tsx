@@ -1,12 +1,27 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 
-export default function TeacherLoginPage() {
+const ERROR_MESSAGES: Record<string, string> = {
+  not_teacher: 'Akun ini tidak terdaftar sebagai pengajar. Jika kamu memang guru, minta admin sekolah mendaftarkan emailmu terlebih dahulu.',
+  auth_failed: 'Login gagal, silakan coba lagi.',
+  role_unresolved: 'Terjadi kesalahan saat memverifikasi akun. Silakan coba lagi atau hubungi admin.',
+}
+
+function TeacherLoginContent() {
   const supabase = createClient()
+  const searchParams = useSearchParams()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const errorCode = searchParams.get('error')
+    if (errorCode) {
+      setError(ERROR_MESSAGES[errorCode] ?? 'Terjadi kesalahan, silakan coba lagi.')
+    }
+  }, [searchParams])
 
   async function handleGoogleLogin() {
     setLoading(true)
@@ -15,8 +30,9 @@ export default function TeacherLoginPage() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        // Efisien: Langsung kunci arah setelah login sukses ke dashboard guru
-        redirectTo: `${location.origin}/auth/callback?next=/teacher`,
+        // Keamanan role guru DITENTUKAN DI SERVER lewat teacher_allowlist,
+        // bukan dari parameter apa pun di sini. Lihat /auth/callback/teacher/route.ts
+        redirectTo: `${location.origin}/auth/callback/teacher`,
       },
     })
 
@@ -96,8 +112,6 @@ export default function TeacherLoginPage() {
                 { icon: '⚗️', label: 'Monitor lab reports' },
               ].map((f) => (
           <div key={f.label} className="flex items-center gap-2 p-2.5 bg-slate-800/40 rounded-xl border border-slate-700/30">
-            
-        {/* Perubahan di sini: tambahkan f. sebelum nama properti */}
         <span className="text-base">{f.icon}</span>
         <span className="text-xs text-slate-400">{f.label}</span>
       </div>
@@ -116,5 +130,13 @@ export default function TeacherLoginPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function TeacherLoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#0b0f19]" />}>
+      <TeacherLoginContent />
+    </Suspense>
   )
 }

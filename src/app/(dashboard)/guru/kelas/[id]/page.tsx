@@ -1,48 +1,66 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
+import KelasActions from '@/components/guru/KelasActions'
+import ClassQuestAssigner from '@/components/guru/ClassQuestAssigner'
+import UnassignQuestButton from '@/components/guru/UnassignQuestButton'
+
+const TYPE_EMOJI: Record<string, string> = {
+  quiz: '📝', lab: '🔬', read: '📖', mini_game: '🎮',
+}
 
 export default async function KelasDetailPage({ params }: { params: { id: string } }) {
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/guru/login')
+  if (!user) redirect('/login-guru')
 
-  const { data: kelas } = await supabase
-    .from('classes')
-    .select('*')
-    .eq('id', params.id)
-    .eq('teacher_id', user.id)
-    .single()
+  // Parallel: kelas + members + quest milik guru (untuk assigner) + quest yang sudah ditugaskan
+  const [
+    { data: kelas },
+    { data: members },
+    { data: ownQuests },
+    { data: classQuests },
+  ] = await Promise.all([
+    supabase
+      .from('classes')
+      .select('id, name, cohort, join_code, created_at')
+      .eq('id', params.id)
+      .eq('teacher_id', user.id)
+      .single(),
+    supabase
+      .from('class_members')
+      .select('id, joined_at, student_profiles(id, level, xp, title, users(display_name, username))')
+      .eq('class_id', params.id)
+      .order('joined_at', { ascending: false }),
+    supabase
+      .from('quests')
+      .select('id, title, type, xp_reward')
+      .eq('created_by', user.id)
+      .eq('is_published', true),
+    supabase
+      .from('class_quests')
+      .select('quest_id, due_at, assigned_at, quests(id, title, type, xp_reward, difficulty)')
+      .eq('class_id', params.id)
+      .order('assigned_at', { ascending: false }),
+  ])
 
   if (!kelas) notFound()
 
-  const { data: members } = await supabase
-    .from('class_members')
-    .select('*, student_profiles(*, users(username, display_name))')
-    .eq('class_id', kelas.id)
-    .order('joined_at', { ascending: false })
-
-  // Quest yang sudah pernah di-assign ke kelas ini (placeholder logic, sesuaikan dengan schema final)
-  const { data: assignedQuests } = await supabase
-    .from('quests')
-    .select('*')
-    .eq('is_published', true)
-    .limit(5)
-
   const totalStudents = members?.length ?? 0
   const avgLevel = totalStudents > 0
-    ? Math.round((members?.reduce((sum: number, m: any) => sum + (m.student_profiles?.level ?? 1), 0) ?? 0) / totalStudents)
+    ? Math.round((members?.reduce((s: number, m: any) => s + (m.student_profiles?.level ?? 1), 0) ?? 0) / totalStudents)
     : 0
-  const totalXp = members?.reduce((sum: number, m: any) => sum + (m.student_profiles?.xp ?? 0), 0) ?? 0
+  const totalXp = members?.reduce((s: number, m: any) => s + (m.student_profiles?.xp ?? 0), 0) ?? 0
+
+  const assignedQuestIds = classQuests?.map(cq => cq.quest_id) ?? []
 
   return (
     <div className="space-y-6">
-      {/* Breadcrumb */}
       <Link href="/guru/kelas" className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors">
         ← Kembali ke Kelas
       </Link>
 
-      {/* Class header */}
+      {/* Header */}
       <div className="bg-slate-900/60 backdrop-blur border border-slate-700/50 rounded-2xl p-6">
         <div className="flex items-start justify-between flex-wrap gap-4">
           <div className="flex items-center gap-4">
@@ -54,73 +72,58 @@ export default async function KelasDetailPage({ params }: { params: { id: string
               {kelas.cohort && <p className="text-sm text-slate-400 mt-0.5">{kelas.cohort}</p>}
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-400">Kode Kelas:</span>
-            <span className="font-mono text-sm font-bold text-teal-400 bg-teal-500/10 border border-teal-500/30 px-3 py-1.5 rounded-lg">
-              {kelas.join_code}
-            </span>
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-2 bg-teal-500/10 border border-teal-500/30 rounded-xl px-3 py-2">
+              <span className="text-xs text-slate-400">Kode:</span>
+              <span className="font-mono font-black text-teal-400 tracking-widest">{kelas.join_code}</span>
+            </div>
+            <KelasActions kelas={kelas} />
           </div>
         </div>
 
-        {/* Stats */}
         <div className="grid grid-cols-3 gap-3 mt-5 pt-5 border-t border-slate-800">
-          <div className="text-center">
-            <div className="text-xl font-black text-white">{totalStudents}</div>
-            <div className="text-xs text-slate-400">Siswa</div>
-          </div>
-          <div className="text-center">
-            <div className="text-xl font-black text-teal-400">Lvl {avgLevel}</div>
-            <div className="text-xs text-slate-400">Rata-rata Level</div>
-          </div>
-          <div className="text-center">
-            <div className="text-xl font-black text-yellow-400">{totalXp.toLocaleString()}</div>
-            <div className="text-xs text-slate-400">Total XP Kelas</div>
-          </div>
+          {[
+            { label: 'Siswa', value: totalStudents, color: 'text-white' },
+            { label: 'Rata-rata Level', value: `Lvl ${avgLevel || '-'}`, color: 'text-teal-400' },
+            { label: 'Total XP Kelas', value: totalXp.toLocaleString(), color: 'text-yellow-400' },
+          ].map(s => (
+            <div key={s.label} className="text-center">
+              <div className={`text-xl font-black ${s.color}`}>{s.value}</div>
+              <div className="text-xs text-slate-400">{s.label}</div>
+            </div>
+          ))}
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Roster — 2 cols */}
+        {/* Roster */}
         <div className="lg:col-span-2 bg-slate-900/60 backdrop-blur border border-slate-700/50 rounded-2xl p-5">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <span>👥</span>
-              <h3 className="font-bold text-white text-sm">Roster Siswa</h3>
-            </div>
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Cari siswa..."
-                className="pl-9 pr-4 py-2 bg-slate-800/60 rounded-xl border border-slate-700/50 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 w-48"
-              />
-              <span className="absolute left-3 top-2.5 text-slate-500 text-sm">🔍</span>
-            </div>
+          <div className="flex items-center gap-2 mb-4">
+            <span>👥</span>
+            <h3 className="font-bold text-white text-sm">Roster Siswa</h3>
+            <span className="text-xs text-slate-500 bg-slate-800/60 px-2 py-0.5 rounded-full">{totalStudents}</span>
           </div>
 
           {members && members.length > 0 ? (
             <div className="space-y-2">
-              {members.map((m: any) => {
+              {members.map((m: any, i: number) => {
                 const sp = m.student_profiles
                 const name = sp?.users?.display_name ?? sp?.users?.username ?? 'Siswa'
-                const mastery = Math.min(95, (sp?.level ?? 1) * 15)
+                const mastery = Math.min(100, (sp?.level ?? 1) * 15)
                 return (
-                  <div
-                    key={m.id}
-                    className="flex items-center gap-3 p-3 rounded-xl bg-slate-800/40 hover:bg-slate-800/70 border border-slate-700/30 transition-colors"
-                  >
-                    <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-teal-400 to-cyan-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                  <div key={m.id} className="flex items-center gap-3 p-3 rounded-xl bg-slate-800/40 hover:bg-slate-800/70 border border-slate-700/30 transition-colors">
+                    <span className="text-xs text-slate-500 w-5 text-center flex-shrink-0">{i + 1}</span>
+                    <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-purple-400 to-indigo-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                       {name.slice(0, 1).toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-semibold text-white truncate">{name}</div>
-                      <div className="text-xs text-slate-400">Level {sp?.level ?? 1}</div>
+                      <div className="text-xs text-slate-400">{sp?.title ?? 'Novice Chemist'} · Level {sp?.level ?? 1}</div>
                     </div>
                     <div className="flex items-center gap-2 w-28 flex-shrink-0">
                       <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
                         <div
-                          className={`h-full rounded-full ${
-                            mastery >= 80 ? 'bg-teal-400' : mastery >= 50 ? 'bg-cyan-400' : 'bg-orange-400'
-                          }`}
+                          className={`h-full rounded-full ${mastery >= 80 ? 'bg-teal-400' : mastery >= 50 ? 'bg-cyan-400' : 'bg-orange-400'}`}
                           style={{ width: `${mastery}%` }}
                         />
                       </div>
@@ -129,76 +132,79 @@ export default async function KelasDetailPage({ params }: { params: { id: string
                     <span className="text-xs font-semibold text-yellow-400 bg-yellow-400/10 border border-yellow-500/20 px-2 py-1 rounded-full flex-shrink-0">
                       ⭐ {(sp?.xp ?? 0).toLocaleString()}
                     </span>
-                    <button className="text-slate-500 hover:text-slate-300 transition-colors flex-shrink-0">⋮</button>
                   </div>
                 )
               })}
             </div>
           ) : (
             <div className="text-center py-12">
-              <div className="text-3xl mb-3">📭</div>
-              <p className="text-slate-400 text-sm mb-1">Belum ada siswa di kelas ini</p>
-              <p className="text-slate-500 text-xs">
-                Bagikan kode <strong className="text-teal-400">{kelas.join_code}</strong> ke siswamu untuk join
-              </p>
+              <div className="text-4xl mb-3">📭</div>
+              <p className="text-slate-300 font-semibold mb-1">Belum ada siswa</p>
+              <p className="text-slate-500 text-sm">Bagikan kode kelas ke siswamu untuk join</p>
             </div>
           )}
         </div>
 
-        {/* Right column: Assign Quest + Settings */}
+        {/* Kolom kanan */}
         <div className="space-y-4">
-          {/* Assign Quest */}
-          <div className="bg-slate-900/60 backdrop-blur border border-slate-700/50 rounded-2xl p-5">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <span>📜</span>
-                <h3 className="font-bold text-white text-sm">Quest untuk Kelas</h3>
-              </div>
-              <Link href="/guru/quest-bank" className="text-xs text-teal-400 hover:text-teal-300 transition-colors">
-                + Tambah
-              </Link>
+          {/* Cara join */}
+          <div className="bg-slate-900/60 backdrop-blur border border-purple-500/20 rounded-2xl p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <span>📲</span>
+              <h3 className="font-bold text-white text-sm">Cara Siswa Join</h3>
             </div>
-            <div className="space-y-2">
-              {assignedQuests && assignedQuests.length > 0 ? (
-                assignedQuests.map(q => (
-                  <div
-                    key={q.id}
-                    className="flex items-center gap-3 p-2.5 rounded-xl bg-slate-800/40 border border-slate-700/30"
-                  >
-                    <div className="w-8 h-8 rounded-lg bg-slate-700/60 flex items-center justify-center text-sm flex-shrink-0">
-                      {q.type === 'quiz' ? '📝' : q.type === 'lab' ? '🔬' : '📖'}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-xs font-semibold text-white truncate">{q.title}</div>
-                      <div className="text-xs text-yellow-400">+{q.xp_reward} XP</div>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-6 text-slate-500 text-sm">
-                  Belum ada quest yang ditugaskan
-                </div>
-              )}
+            <ol className="space-y-2 text-xs text-slate-400 mb-4">
+              <li className="flex gap-2"><span className="text-purple-400 font-bold flex-shrink-0">1.</span>Login sebagai Murid</li>
+              <li className="flex gap-2"><span className="text-purple-400 font-bold flex-shrink-0">2.</span>Buka menu <strong className="text-slate-300">Gabung Kelas</strong> di sidebar</li>
+              <li className="flex gap-2"><span className="text-purple-400 font-bold flex-shrink-0">3.</span>Masukkan kode berikut:</li>
+            </ol>
+            <div className="flex items-center justify-center bg-slate-800/60 border border-slate-700/50 rounded-xl py-4">
+              <span className="font-mono text-2xl font-black text-teal-400 tracking-[0.3em]">{kelas.join_code}</span>
             </div>
           </div>
 
-          {/* Class settings */}
+          {/* Quest kelas — sekarang terhubung ke data sungguhan */}
           <div className="bg-slate-900/60 backdrop-blur border border-slate-700/50 rounded-2xl p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <span>⚙️</span>
-              <h3 className="font-bold text-white text-sm">Pengaturan Kelas</h3>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <span>📜</span>
+                <h3 className="font-bold text-white text-sm">Quest Kelas</h3>
+                {classQuests && classQuests.length > 0 && (
+                  <span className="text-xs text-slate-500 bg-slate-800/60 px-2 py-0.5 rounded-full">{classQuests.length}</span>
+                )}
+              </div>
+              <ClassQuestAssigner
+                classId={kelas.id}
+                assignedQuestIds={assignedQuestIds}
+                availableQuests={ownQuests ?? []}
+              />
             </div>
-            <div className="space-y-2">
-              <button className="w-full text-left text-sm text-slate-300 hover:text-white px-3 py-2.5 rounded-xl hover:bg-slate-800/60 transition-colors">
-                ✏️ Edit nama kelas
-              </button>
-              <button className="w-full text-left text-sm text-slate-300 hover:text-white px-3 py-2.5 rounded-xl hover:bg-slate-800/60 transition-colors">
-                🔄 Reset kode kelas
-              </button>
-              <button className="w-full text-left text-sm text-red-400 hover:text-red-300 px-3 py-2.5 rounded-xl hover:bg-red-500/10 transition-colors">
-                🗑️ Hapus kelas
-              </button>
-            </div>
+
+            {classQuests && classQuests.length > 0 ? (
+              <div className="space-y-2">
+                {classQuests.map((cq: any) => {
+                  const q = cq.quests
+                  if (!q) return null
+                  return (
+                    <div
+                      key={cq.quest_id}
+                      className="flex items-center gap-2.5 p-2.5 rounded-xl bg-slate-800/40 border border-slate-700/30"
+                    >
+                      <span className="text-sm flex-shrink-0">{TYPE_EMOJI[q.type] ?? '📜'}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs font-semibold text-white truncate">{q.title}</div>
+                        <div className="text-xs text-yellow-400">+{q.xp_reward} XP</div>
+                      </div>
+                      <UnassignQuestButton classId={kelas.id} questId={cq.quest_id} />
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-6 text-slate-500 text-xs">
+                Belum ada quest ditugaskan
+              </div>
+            )}
           </div>
         </div>
       </div>
