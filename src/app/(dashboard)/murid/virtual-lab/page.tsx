@@ -34,10 +34,10 @@ export default function VirtualLabPage() {
     router.refresh() 
   }
 
-  return (
-    <div className="space-y-6">
+return (
+    // Tambahkan px-4 (padding kiri-kanan untuk HP) dan pb-24 (ruang kosong di bawah agar tidak tertutup bar HP)
+    <div className="space-y-6 px-4 sm:px-6 md:px-8 py-6 pb-24">
       <div className="relative">
-        {/* Ambient glow di belakang judul — terasa seperti cahaya lab */}
         <div className="absolute -top-8 -left-4 w-64 h-32 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
         <h1 className="relative text-2xl font-black text-white flex items-center gap-2">
           🔬 Laboratorium Pribadi
@@ -50,10 +50,12 @@ export default function VirtualLabPage() {
       {loading ? (
         <div className="text-center py-20 text-slate-500">Memuat rak bahan...</div>
       ) : (
-        <>
+        <div className="w-full overflow-x-hidden"> {/* 👈 Pencegah komponen anak melebar keluar layar */}
           <LabWorkbench reagents={reagents} onExperimentComplete={handleExperimentComplete} />
-          <ExperimentLog refreshKey={refreshKey} />
-        </>
+          <div className="mt-8">
+            <ExperimentLog refreshKey={refreshKey} />
+          </div>
+        </div>
       )}
     </div>
   )

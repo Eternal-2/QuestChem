@@ -1,7 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import Sidebar from '@/components/layout/Sidebar'
-import Header from '@/components/layout/Header'
+import StudentShell from '@/components/layout/StudentShell'
 
 export default async function StudentLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createServerSupabaseClient()
@@ -27,13 +26,7 @@ export default async function StudentLayout({ children }: { children: React.Reac
 
   return (
     <div className="min-h-screen bg-[#080c14]">
-      <Sidebar user={userData} profile={profile} />
-      <Header profile={profile} />
-      <main className="ml-[240px] pt-14 min-h-screen">
-        <div className="p-6">
-          {children}
-        </div>
-      </main>
+      <StudentShell user={userData} profile={profile}>{children}</StudentShell>
     </div>
   )
 }

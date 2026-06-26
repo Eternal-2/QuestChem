@@ -4,14 +4,19 @@ import type { StudentProfile } from '@/types/database'
 
 interface HeaderProps {
   profile: StudentProfile | null
+  setSidebarOpen?: (value:boolean)=>void
 }
 
-export default function Header({ profile }: HeaderProps) {
+// 👇 PERBAIKAN DI SINI: Tambahkan setSidebarOpen di dalam kurung kurawal
+export default function Header({ profile, setSidebarOpen }: HeaderProps) {
   return (
-    <header className="fixed top-0 left-[240px] right-0 h-14 bg-[#0d1117]/90 backdrop-blur-md border-b border-slate-800/80 flex items-center px-6 z-30">
+    <header className="fixed top-0 left-0 md:left-[240px] right-0 h-14 bg-[#0d1117]/90 backdrop-blur-md border-b border-slate-800/80 flex items-center px-4 md:px-6 z-30">
       
       {/* Kiri: breadcrumb / judul */}
-      <div className="flex-1">
+      <div className="flex items-center gap-3 flex-1">
+        <button onClick={() => setSidebarOpen?.(true)} className="md:hidden text-white text-xl">
+          ☰
+        </button>
         <span className="text-xs text-slate-500 uppercase tracking-widest font-semibold">
           Akademi Kimia
         </span>

@@ -1,5 +1,6 @@
 import type { Item } from '@/types/database'
 import { RARITY_COLORS, RARITY_BG } from '@/types/database'
+import { getItemIcon } from './itemIcon'
 
 interface ItemCardProps {
   item: Item
@@ -24,14 +25,6 @@ const RARITY_LABEL: Record<string, string> = {
   epic:      'text-purple-600',
   legendary: 'text-yellow-600',
   mythic:    'text-pink-600',
-}
-
-const TYPE_EMOJI: Record<string, string> = {
-  gear:       '⚙️',
-  chemical:   '🧪',
-  potion:     '🧴',
-  artifact:   '💎',
-  quest_item: '📦',
 }
 
 export default function ItemCard({ item, quantity, isEquipped, onEquip, onClick, size = 'md' }: ItemCardProps) {
@@ -61,7 +54,7 @@ export default function ItemCard({ item, quantity, isEquipped, onEquip, onClick,
         {item.icon_url ? (
           <img src={item.icon_url} alt={item.name} className="w-8 h-8 object-contain" />
         ) : (
-          <span>{TYPE_EMOJI[item.type]}</span>
+          <span>{getItemIcon(item.name, item.type)}</span>
         )}
       </div>
 

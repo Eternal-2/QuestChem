@@ -18,7 +18,8 @@ const TYPE_LABEL: Record<string, string> = {
   quiz: 'Pertanyaan', lab: 'Langkah', read: 'Bagian', mini_game: 'Tahap',
 }
 
-export default async function QuestDetailPage({ params }: { params: { id: string } }) {
+export default async function QuestDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -26,7 +27,7 @@ export default async function QuestDetailPage({ params }: { params: { id: string
   const { data: quest } = await supabase
     .from('quests')
     .select('*')
-    .eq('id', params.id)
+    .eq('id', id)
     .eq('is_published', true)
     .single()
 

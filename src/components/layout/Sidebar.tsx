@@ -8,6 +8,8 @@ import { getLevelProgress } from '@/types/database'
 interface SidebarProps {
   user: User
   profile: StudentProfile | null
+  isOpen?: boolean                   // 👈 Tambahkan ini
+  setIsOpen?: (value: boolean) => void // 👈 Tambahkan ini
 }
 
 const NAV_ITEMS = [
@@ -17,9 +19,10 @@ const NAV_ITEMS = [
   { href: '/murid/quests',      label: 'Quests',      emoji: '📜' },
   { href: '/murid/pve',         label: 'PvE Battle',  emoji: '🐉' },
   { href: '/murid/toko',        label: 'Toko',        emoji: '🛒' },
+  { href: '/murid/backpack',    label: 'Tas', emoji: '🎒' },
 ]
 
-export default function Sidebar({ user, profile }: SidebarProps) {
+export default function Sidebar({ user, profile, isOpen, setIsOpen }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
@@ -37,7 +40,27 @@ export default function Sidebar({ user, profile }: SidebarProps) {
   const displayName = user.display_name ?? user.username
 
   return (
-    <aside className="fixed top-0 left-0 h-screen w-[240px] bg-[#0d1117] border-r border-slate-800/80 flex flex-col z-40">
+<>
+      {/* 1. Overlay Hitam Transparan untuk HP (Klik untuk menutup Sidebar) */}
+      {isOpen && (
+        <div 
+          className="fixed inset-0 bg-black/60 z-40 md:hidden"
+          onClick={() => setIsOpen?.(false)}
+        />
+      )}
+
+      {/* 2. Sidebar Utama dengan Animasi Geser */}
+      <aside className={`fixed top-0 left-0 h-screen w-[240px] bg-[#0d1117] border-r border-slate-800/80 z-50 flex flex-col transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
+        
+        {/* Header Sidebar + Tombol Close untuk HP */}
+        <div className="h-14 flex items-center justify-between px-6 border-b border-slate-800/80">
+          <div className="font-black text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-cyan-400 tracking-wider">
+            QUESTCHEM
+          </div>
+          <button onClick={() => setIsOpen?.(false)} className="md:hidden text-slate-400 hover:text-white text-xl">
+            ×
+          </button>
+        </div>
       <div className="px-5 pt-5 pb-4 border-b border-slate-800/80">
         <div className="flex items-center gap-2">
           <span className="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-teal-400 via-cyan-300 to-purple-400">QuestChem</span>
@@ -91,6 +114,6 @@ export default function Sidebar({ user, profile }: SidebarProps) {
           Keluar
         </button>
       </div>
-    </aside>
+    </aside></>
   )
 }

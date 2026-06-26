@@ -3,7 +3,7 @@
 // ============================================
 
 export type UserRole = 'student' | 'teacher' | 'parent' | 'admin'
-export type QuestType = 'quiz' | 'lab' | 'read' | 'mini_game'
+export type QuestType = 'quiz' | 'lab' | 'read' | 'mini_game' | 'raid_boss'
 export type QuestDifficulty = 'easy' | 'medium' | 'hard'
 export type QuestStatus = 'locked' | 'active' | 'completed' | 'failed'
 export type ItemType = 'gear' | 'chemical' | 'potion' | 'artifact' | 'quest_item'

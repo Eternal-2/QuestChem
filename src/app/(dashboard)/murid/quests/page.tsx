@@ -14,7 +14,7 @@ const TOPICS = [
 ]
 
 const TYPE_FILTERS = [
-  { value: '',          label: 'Semua tipe' },
+  { value: '',           label: 'Semua tipe' },
   { value: 'quiz',       label: '📝 Quiz' },
   { value: 'lab',        label: '🔬 Lab' },
   { value: 'read',       label: '📖 Bacaan' },
@@ -84,18 +84,19 @@ export default async function QuestsPage({
   const activeType = searchParams.type ?? ''
 
   return (
-    <div className="max-w-5xl mx-auto">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 md:px-8 py-6">
+      
       {/* Quest dari kelas — prioritas, tampil di atas */}
       {classAssignedQuests.length > 0 && (
-        <div className="mb-8 bg-slate-900/60 backdrop-blur rounded-2xl p-5 border border-purple-500/20">
-          <div className="flex items-center gap-2 mb-4">
-            <span>🏰</span>
-            <h2 className="text-base font-bold text-white">Quest dari Kelasmu</h2>
-            <span className="text-xs text-slate-400 bg-slate-800/60 px-2 py-0.5 rounded-full">
-              {classAssignedQuests.length}
+        <div className="mb-8 bg-slate-900/60 backdrop-blur rounded-3xl p-5 sm:p-6 border border-purple-500/20 shadow-lg">
+          <div className="flex items-center gap-3 mb-5">
+            <span className="text-2xl">🏰</span>
+            <h2 className="text-lg sm:text-xl font-black text-white tracking-wide">Quest dari Kelasmu</h2>
+            <span className="text-xs font-bold text-purple-300 bg-purple-500/20 border border-purple-500/30 px-3 py-1 rounded-full">
+              {classAssignedQuests.length} Tugas
             </span>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {classAssignedQuests.map((cq: any) => {
               const q = cq.quests
               const progress = progressMap[q.id]
@@ -104,21 +105,23 @@ export default async function QuestsPage({
                 <Link
                   key={q.id}
                   href={`/murid/quests/${q.id}`}
-                  className={`flex items-start gap-3 p-3 rounded-xl border transition-colors ${
+                  className={`flex items-start gap-4 p-4 rounded-2xl border transition-all duration-300 ${
                     isDone
-                      ? 'bg-teal-500/5 border-teal-500/20'
-                      : 'bg-slate-800/60 border-slate-700/50 hover:border-purple-500/40'
+                      ? 'bg-teal-500/10 border-teal-500/30 opacity-70 hover:opacity-100'
+                      : 'bg-slate-800/80 border-slate-700 hover:border-purple-500/50 hover:bg-slate-800 hover:shadow-[0_0_15px_rgba(168,85,247,0.15)]'
                   }`}
                 >
-                  <span className="text-lg flex-shrink-0">{TYPE_EMOJI[q.type] ?? '📜'}</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-semibold text-white truncate">{q.title}</div>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-xs text-yellow-400">+{q.xp_reward} XP</span>
-                      {isDone && <span className="text-xs text-teal-400">✓ Selesai</span>}
+                  <span className="text-2xl flex-shrink-0 bg-slate-900/50 p-2 rounded-xl border border-slate-700/50">
+                    {TYPE_EMOJI[q.type] ?? '📜'}
+                  </span>
+                  <div className="flex-1 min-w-0 py-1">
+                    <div className="text-sm font-bold text-white truncate mb-1">{q.title}</div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-xs font-black text-yellow-500 bg-yellow-500/10 px-2 py-0.5 rounded-md">+{q.xp_reward} XP</span>
+                      {isDone && <span className="text-xs font-bold text-teal-400">✓ Selesai</span>}
                       {cq.due_at && !isDone && (
-                        <span className="text-xs text-orange-400">
-                          Deadline: {new Date(cq.due_at).toLocaleDateString('id-ID')}
+                        <span className="text-xs font-medium text-orange-400 flex items-center gap-1">
+                          ⏰ {new Date(cq.due_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
                         </span>
                       )}
                     </div>
@@ -130,52 +133,61 @@ export default async function QuestsPage({
         </div>
       )}
 
-      {/* Header */}
+      {/* Header Utama */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white mb-1 flex items-center gap-2">
-          📜 Quests
+        <h1 className="text-2xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-cyan-400 mb-2 flex items-center gap-3">
+          <span>📜</span> Papan Quest
         </h1>
-        <p className="text-slate-400 text-sm">Selesaikan quest untuk mendapat XP dan tingkatkan kemampuan kimiamu</p>
+        <p className="text-slate-400 text-sm sm:text-base">Selesaikan quest untuk meraup XP dan tingkatkan level kimiamu!</p>
       </div>
 
-      {/* Topic filter — PENTING: prefix /murid ditambahkan, sebelumnya /quests?... saja menyebabkan 404 */}
-      <div className="flex gap-2 flex-wrap mb-4">
-        {TOPICS.map(t => (
-          <Link
-            key={t.id}
-            href={`/murid/quests?topic=${t.id}`}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-              activeTopic === t.id
-                ? 'bg-teal-500 text-slate-900'
-                : 'bg-slate-800/60 border border-slate-700/50 text-slate-300 hover:border-teal-500/40'
-            }`}
-          >
-            <span>{t.emoji}</span>
-            {t.label}
-          </Link>
-        ))}
-      </div>
+{/* Filter Section (Responsive Horizontal Scroll di HP) */}
+      <div className="space-y-4 mb-8">
+        
+        {/* Topic filter */}
+        <div className="flex gap-3 overflow-x-auto md:flex-wrap pb-3 snap-x snap-mandatory -mx-5 px-5 sm:mx-0 sm:px-0 scroll-pl-5 sm:scroll-pl-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          {TOPICS.map(t => (
+            <Link
+              key={t.id}
+              href={`/murid/quests?topic=${t.id}&type=${activeType}`}
+              className={`flex-shrink-0 snap-start flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs sm:text-sm font-bold transition-all ${
+                activeTopic === t.id
+                  ? 'bg-gradient-to-r from-teal-500 to-cyan-500 text-slate-900 shadow-md shadow-teal-500/20'
+                  : 'bg-slate-800/80 border border-slate-700/80 text-slate-300 hover:bg-slate-700 hover:border-teal-500/50'
+              }`}
+            >
+              <span className="text-base">{t.emoji}</span>
+              {t.label}
+            </Link>
+          ))}
+          {/* Dummy spacer agar item terakhir tidak menabrak layar kanan di HP */}
+          <div className="w-2 flex-shrink-0 sm:hidden" />
+        </div>
 
-      {/* Type filter — PENTING: prefix /murid juga ditambahkan di sini */}
-      <div className="flex gap-2 flex-wrap mb-6">
-        {TYPE_FILTERS.map(t => (
-          <Link
-            key={t.value}
-            href={`/murid/quests?topic=${activeTopic}&type=${t.value}`}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-              activeType === t.value
-                ? 'bg-white text-slate-900'
-                : 'bg-slate-800/40 border border-slate-700/40 text-slate-400 hover:border-slate-600'
-            }`}
-          >
-            {t.label}
-          </Link>
-        ))}
+        {/* Type filter */}
+        <div className="flex gap-2.5 overflow-x-auto md:flex-wrap pb-2 snap-x snap-mandatory -mx-5 px-5 sm:mx-0 sm:px-0 scroll-pl-5 sm:scroll-pl-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          {TYPE_FILTERS.map(t => (
+            <Link
+              key={t.value}
+              href={`/murid/quests?topic=${activeTopic}&type=${t.value}`}
+              className={`flex-shrink-0 snap-start px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                activeType === t.value
+                  ? 'bg-white text-slate-900 shadow-sm'
+                  : 'bg-slate-800/50 border border-slate-700/50 text-slate-400 hover:text-white hover:bg-slate-700'
+              }`}
+            >
+              {t.label}
+            </Link>
+          ))}
+          {/* Dummy spacer agar item terakhir tidak menabrak layar kanan di HP */}
+          <div className="w-2 flex-shrink-0 sm:hidden" />
+        </div>
+
       </div>
 
       {/* Quest grid */}
       {quests && quests.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {quests.map((quest: Quest) => {
             const progress = progressMap[quest.id]
             return (
@@ -190,10 +202,10 @@ export default async function QuestsPage({
           })}
         </div>
       ) : (
-        <div className="text-center py-16 text-slate-500">
-          <div className="text-4xl mb-3">🔍</div>
-          <p className="font-medium text-slate-300">Tidak ada quest ditemukan</p>
-          <p className="text-sm mt-1">Coba topik atau tipe yang berbeda</p>
+        <div className="text-center py-20 bg-slate-800/30 rounded-3xl border border-slate-800 border-dashed">
+          <div className="text-5xl mb-4 opacity-80">🔍</div>
+          <p className="text-lg font-bold text-slate-300">Quest tidak ditemukan</p>
+          <p className="text-sm mt-2 text-slate-500">Coba pilih kombinasi topik atau tipe yang berbeda.</p>
         </div>
       )}
     </div>

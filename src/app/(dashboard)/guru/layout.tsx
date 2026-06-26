@@ -1,7 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import TeacherSidebar from '@/components/layout/TeacherSidebar'
-import TeacherHeader from '@/components/layout/TeacherHeader'
+import TeacherShell from '@/components/layout/TeacherShell'
 
 export default async function TeacherLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createServerSupabaseClient()
@@ -27,13 +26,7 @@ export default async function TeacherLayout({ children }: { children: React.Reac
         <div className="absolute bottom-[-20%] left-[-10%] w-[500px] h-[500px] bg-indigo-500/5 rounded-full filter blur-[120px]" />
       </div>
       <div className="relative z-10">
-        <TeacherSidebar user={userData} />
-        <TeacherHeader />
-        <main className="ml-[240px] pt-14 min-h-screen">
-          <div className="max-w-6xl mx-auto px-6 py-8">
-            {children}
-          </div>
-        </main>
+        <TeacherShell user={userData}>{children}</TeacherShell>
       </div>
     </div>
   )

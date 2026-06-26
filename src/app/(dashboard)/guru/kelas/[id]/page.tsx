@@ -9,7 +9,8 @@ const TYPE_EMOJI: Record<string, string> = {
   quiz: '📝', lab: '🔬', read: '📖', mini_game: '🎮',
 }
 
-export default async function KelasDetailPage({ params }: { params: { id: string } }) {
+export default async function KelasDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login-guru')
@@ -24,13 +25,13 @@ export default async function KelasDetailPage({ params }: { params: { id: string
     supabase
       .from('classes')
       .select('id, name, cohort, join_code, created_at')
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('teacher_id', user.id)
       .single(),
     supabase
       .from('class_members')
       .select('id, joined_at, student_profiles(id, level, xp, title, users(display_name, username))')
-      .eq('class_id', params.id)
+      .eq('class_id', id)
       .order('joined_at', { ascending: false }),
     supabase
       .from('quests')
@@ -40,7 +41,7 @@ export default async function KelasDetailPage({ params }: { params: { id: string
     supabase
       .from('class_quests')
       .select('quest_id, due_at, assigned_at, quests(id, title, type, xp_reward, difficulty)')
-      .eq('class_id', params.id)
+      .eq('class_id', id)
       .order('assigned_at', { ascending: false }),
   ])
 

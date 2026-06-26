@@ -4,7 +4,8 @@ import Link from 'next/link'
 import QuestBuilder from '@/components/guru/QuestBuilder'
 import type { Quest } from '@/types/database'
 
-export default async function EditQuestPage({ params }: { params: { id: string } }) {
+export default async function EditQuestPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/guru/login')
@@ -12,7 +13,7 @@ export default async function EditQuestPage({ params }: { params: { id: string }
   const { data: quest } = await supabase
     .from('quests')
     .select('*')
-    .eq('id', params.id)
+    .eq('id', id)
     .eq('created_by', user.id) // hanya pemilik quest yang bisa edit
     .single()
 

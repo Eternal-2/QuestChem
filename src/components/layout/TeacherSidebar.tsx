@@ -13,6 +13,8 @@ interface User {
 
 interface TeacherSidebarProps {
   user: User
+  sidebarOpen?: boolean
+  setSidebarOpen?: (value:boolean)=>void
 }
 
 const NAV_ITEMS = [
@@ -23,7 +25,7 @@ const NAV_ITEMS = [
   { href: '/guru/lab-reports', label: 'Lab Reports',  emoji: '🔬' },
 ]
 
-export default function TeacherSidebar({ user }: TeacherSidebarProps) {
+export default function TeacherSidebar({ user, sidebarOpen=false, setSidebarOpen }: TeacherSidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
@@ -37,7 +39,7 @@ export default function TeacherSidebar({ user }: TeacherSidebarProps) {
   const displayName = user.display_name ?? user.username
 
   return (
-    <aside className="fixed top-0 left-0 h-screen w-[240px] bg-[#0d1117] border-r border-slate-800/80 flex flex-col z-40">
+    <><div className={`fixed inset-0 bg-black/50 z-40 md:hidden ${sidebarOpen? "block":"hidden"}`} onClick={()=>setSidebarOpen?.(false)} /><aside className={`fixed top-0 left-0 h-screen w-[240px] bg-[#0d1117] border-r border-slate-800/80 flex flex-col z-50 transition-transform duration-300 md:translate-x-0 ${sidebarOpen? "translate-x-0":"-translate-x-full md:translate-x-0"}`}>
 
       {/* Logo */}
       <div className="px-5 pt-5 pb-4 border-b border-slate-800/80">
@@ -100,6 +102,6 @@ export default function TeacherSidebar({ user }: TeacherSidebarProps) {
           Keluar
         </button>
       </div>
-    </aside>
+    </aside></>
   )
 }
