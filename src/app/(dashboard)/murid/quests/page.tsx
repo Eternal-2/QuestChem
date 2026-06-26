@@ -28,8 +28,11 @@ const TYPE_EMOJI: Record<string, string> = {
 export default async function QuestsPage({
   searchParams,
 }: {
-  searchParams: { topic?: string; type?: string }
+  searchParams: Promise<{ topic?: string; type?: string }>
 }) {
+  const resolvedSearchParams = await searchParams;
+  const Topic = resolvedSearchParams.topic ?? 'all';
+  const Type = resolvedSearchParams.type ?? '';
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -41,8 +44,8 @@ export default async function QuestsPage({
     .single()
 
   let questsQuery = supabase.from('quests').select('*').eq('is_published', true)
-  if (searchParams.topic && searchParams.topic !== 'all') questsQuery = questsQuery.eq('topic', searchParams.topic)
-  if (searchParams.type) questsQuery = questsQuery.eq('type', searchParams.type)
+  if (Topic && Topic !== 'all') questsQuery = questsQuery.eq('topic', Topic)
+  if (Type) questsQuery = questsQuery.eq('type', Type)
   questsQuery = questsQuery.order('xp_reward')
 
   // Query independen dijalankan paralel
@@ -80,8 +83,8 @@ export default async function QuestsPage({
     }
   }
 
-  const activeTopic = searchParams.topic ?? 'all'
-  const activeType = searchParams.type ?? ''
+  const activeTopic = Topic ?? 'all'
+  const activeType = Type ?? ''
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 md:px-8 py-6">

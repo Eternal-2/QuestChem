@@ -22,8 +22,9 @@ interface RankedStudent {
 export default async function RankingPage({
   searchParams,
 }: {
-  searchParams: { kelas?: string }
+  searchParams: Promise<{ kelas?: string }>
 }) {
+  const { kelas } = await searchParams;
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -41,7 +42,7 @@ export default async function RankingPage({
     .select('classes(id, name)')
     .eq('student_id', profile.id)
 
-  const activeClassId = searchParams.kelas
+  const activeClassId = kelas
 
   let rankedStudents: RankedStudent[] = []
 
