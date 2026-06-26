@@ -7,7 +7,8 @@ const submitSchema = z.object({
   xp_earned: z.number().min(0),
 })
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+    const { id } = await params
   try {
     const supabase = await createServerSupabaseClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -28,7 +29,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     const { data: challenge } = await supabase
       .from('pvp_challenges')
       .select('challenger_id, status')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (!challenge) return NextResponse.json({ error: 'Challenge tidak ditemukan' }, { status: 404 })
@@ -40,7 +41,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     }
 
     const { data, error } = await supabase.rpc('complete_challenge', {
-      p_challenge_id: params.id,
+      p_challenge_id: id,
       p_challenger_score: score,
       p_challenger_xp_earned: xp_earned,
     })

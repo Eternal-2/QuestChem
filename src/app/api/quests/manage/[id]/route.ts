@@ -43,13 +43,14 @@ async function verifyOwnership(supabase: any, userId: string, questId: string) {
   return quest && quest.created_by === userId
 }
 
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   try {
     const supabase = await createServerSupabaseClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const isOwner = await verifyOwnership(supabase, user.id, params.id)
+    const isOwner = await verifyOwnership(supabase, user.id, id)
     if (!isOwner) {
       return NextResponse.json({ error: 'Kamu tidak punya akses untuk mengubah quest ini' }, { status: 403 })
     }
@@ -60,7 +61,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     const { data, error } = await supabase
       .from('quests')
       .update({ ...parsed, updated_at: new Date().toISOString() })
-      .eq('id', params.id)
+      .eq('id', id)
       .select()
       .single()
 
@@ -76,13 +77,14 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   }
 }
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   try {
     const supabase = await createServerSupabaseClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const isOwner = await verifyOwnership(supabase, user.id, params.id)
+    const isOwner = await verifyOwnership(supabase, user.id, id)
     if (!isOwner) {
       return NextResponse.json({ error: 'Kamu tidak punya akses untuk menghapus quest ini' }, { status: 403 })
     }
@@ -90,7 +92,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     const { error } = await supabase
       .from('quests')
       .delete()
-      .eq('id', params.id)
+      .eq('id', id)
 
     if (error) throw error
 

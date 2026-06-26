@@ -9,8 +9,9 @@ const submitSchema = z.object({
 
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const supabase = await createServerSupabaseClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -29,7 +30,7 @@ export async function POST(
 
     const { data, error } = await supabase.rpc('submit_quest', {
       p_student_id: profile.id,
-      p_quest_id:   params.id,
+      p_quest_id:   id,
       p_answers:    answers,
       p_score:      score,
     })

@@ -1,0 +1,76 @@
+
+> questchem@0.1.0 build
+> next build
+
+   ▲ Next.js 15.1.0
+   - Environments: .env.local
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/40) ...
+   Generating static pages (10/40) 
+   Generating static pages (20/40) 
+   Generating static pages (30/40) 
+ ✓ Generating static pages (40/40)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                              Size     First Load JS
+┌ ○ /                                    198 B           106 kB
+├ ○ /_not-found                          983 B           106 kB
+├ ƒ /api/ai-tutor                        198 B           106 kB
+├ ƒ /api/challenge                       198 B           106 kB
+├ ƒ /api/challenge/[id]/submit           198 B           106 kB
+├ ƒ /api/class/join                      198 B           106 kB
+├ ƒ /api/inventory/equip                 198 B           106 kB
+├ ƒ /api/lab/experiments                 198 B           106 kB
+├ ƒ /api/lab/react                       198 B           106 kB
+├ ƒ /api/quests                          198 B           106 kB
+├ ƒ /api/quests/[id]/submit              198 B           106 kB
+├ ƒ /api/quests/manage                   198 B           106 kB
+├ ƒ /api/quests/manage/[id]              198 B           106 kB
+├ ƒ /api/shop/buy                        198 B           106 kB
+├ ƒ /api/xp                              198 B           106 kB
+├ ƒ /auth/callback                       198 B           106 kB
+├ ƒ /auth/callback/teacher               198 B           106 kB
+├ ƒ /guru                                198 B           106 kB
+├ ƒ /guru/home                           185 B           109 kB
+├ ƒ /guru/kelas                          185 B           109 kB
+├ ƒ /guru/kelas/[id]                     2.69 kB         176 kB
+├ ƒ /guru/kelas/baru                     1.49 kB         171 kB
+├ ƒ /guru/lab-reports                    198 B           106 kB
+├ ƒ /guru/notifikasi                     1.97 kB         175 kB
+├ ƒ /guru/quest-bank                     1.24 kB         175 kB
+├ ƒ /guru/quest-bank/[id]/edit           140 B           113 kB
+├ ƒ /guru/quest-bank/baru                139 B           113 kB
+├ ƒ /guru/roster                         2.12 kB         108 kB
+├ ○ /login                               2.12 kB         175 kB
+├ ○ /login-guru                          2.57 kB         176 kB
+├ ƒ /murid/achievements                  198 B           106 kB
+├ ƒ /murid/backpack                      3.29 kB         109 kB
+├ ƒ /murid/challenge                     185 B           109 kB
+├ ƒ /murid/challenge/[id]                2.47 kB         108 kB
+├ ƒ /murid/gabung-kelas                  1.86 kB         111 kB
+├ ƒ /murid/guild                         185 B           109 kB
+├ ƒ /murid/home                          1.83 kB         107 kB
+├ ƒ /murid/profile                       707 B           106 kB
+├ ƒ /murid/pve                           7.66 kB         177 kB
+├ ƒ /murid/quests                        176 B           109 kB
+├ ƒ /murid/quests/[id]                   2.62 kB         112 kB
+├ ƒ /murid/ranking                       198 B           106 kB
+├ ƒ /murid/toko                          3.37 kB         109 kB
+├ ƒ /murid/virtual-lab                   6.26 kB         176 kB
+└ ○ /register                            1.71 kB         175 kB
++ First Load JS shared by all            105 kB
+  ├ chunks/1517-e8cbbf272a580244.js      50.5 kB
+  ├ chunks/4bd1b696-86c6870308856681.js  52.9 kB
+  └ other shared chunks (total)          1.98 kB
+
+
+ƒ Middleware                             88 kB
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
