@@ -3,10 +3,11 @@ import { redirect } from 'next/navigation'
 import BackpackClient from '@/components/game/BackpackClient'
 import type { ItemType } from '@/types/database'
 
+// Mengubah tipe searchParams menjadi Promise
 export default async function BackpackPage({
   searchParams,
 }: {
-  searchParams: { tab?: string }
+  searchParams: Promise<{ tab?: string }>
 }) {
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
