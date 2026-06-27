@@ -6,9 +6,7 @@ export async function GET(request: Request) {
   const code = searchParams.get('code')
 
   if (!code) {
-    return NextResponse.redirect(
-      `${origin}/login-guru?error=auth_failed`
-    )
+    return NextResponse.redirect(`${origin}/login-guru?error=auth_failed`)
   }
 
   const supabase = await createServerSupabaseClient()
@@ -16,93 +14,79 @@ export async function GET(request: Request) {
   const { error } = await supabase.auth.exchangeCodeForSession(code)
 
   if (error) {
-    return NextResponse.redirect(
-      `${origin}/login-guru?error=auth_failed`
-    )
+    console.error(error)
+    return NextResponse.redirect(`${origin}/login-guru?error=auth_failed`)
   }
 
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (!user) {
+  if (!user || !user.email) {
+    return NextResponse.redirect(`${origin}/login-guru?error=auth_failed`)
+  }
+
+  // ============================
+  // Cek apakah email guru terdaftar
+  // ============================
+  const { data: allowedTeacher } = await supabase
+    .from('teacher_allowlist')
+    .select('email')
+    .eq('email', user.email)
+    .maybeSingle()
+
+  if (!allowedTeacher) {
+    await supabase.auth.signOut()
+
     return NextResponse.redirect(
-      `${origin}/login-guru?error=auth_failed`
+      `${origin}/login-guru?error=not_teacher`
     )
   }
 
-  // Ambil data user dari database
-  const { data: userData } = await supabase
+  // ============================
+  // Buat / update user sebagai teacher
+  // ============================
+  const { error: userError } = await supabase
     .from('users')
-    .select('id, role')
-    .eq('id', user.id)
-    .single()
+    .upsert(
+      {
+        id: user.id,
+        email: user.email,
+        username:
+          user.email.split('@')[0],
+        display_name:
+          user.user_metadata?.full_name ??
+          user.email.split('@')[0],
+        avatar_url:
+          user.user_metadata?.avatar_url ?? null,
+        role: 'teacher',
+      },
+      {
+        onConflict: 'id',
+      }
+    )
 
-  if (!userData) {
-    await supabase.from('users').insert({
-      id: user.id,
-      email: user.email,
-      username:
-        user.email?.split('@')[0] ??
-        `teacher_${user.id.substring(0, 6)}`,
-      display_name:
-        user.user_metadata?.full_name ??
-        user.email?.split('@')[0],
-      avatar_url:
-        user.user_metadata?.avatar_url ?? null,
-      role: 'teacher',
-    })
+  if (userError) {
+    console.error(userError)
 
-    await supabase.from('teacher_profiles').insert({
-      user_id: user.id,
-    })
-
-    return NextResponse.redirect(`${origin}/guru/home`)
-  }
-
-  if (
-    userData.role === 'teacher' ||
-    userData.role === 'admin'
-  ) {
-    const { data: teacherProfile } = await supabase
-      .from('teacher_profiles')
-      .select('user_id')
-      .eq('user_id', user.id)
-      .single()
-
-    if (!teacherProfile) {
-      await supabase.from('teacher_profiles').insert({
-        user_id: user.id,
-      })
-    }
-
-    return NextResponse.redirect(`${origin}/guru/home`)
-  }
-
-  if (userData.role === 'student') {
     return NextResponse.redirect(
-      `${origin}/login-guru?error=student_account`
+      `${origin}/login-guru?error=database`
     )
   }
 
+  // ============================
+  // Pastikan teacher profile ada
+  // ============================
   await supabase
-    .from('users')
-    .update({
-      role: 'teacher',
-    })
-    .eq('id', user.id)
-
-  const { data: teacherProfile } = await supabase
     .from('teacher_profiles')
-    .select('user_id')
-    .eq('user_id', user.id)
-    .single()
-
-  if (!teacherProfile) {
-    await supabase.from('teacher_profiles').insert({
-      user_id: user.id,
-    })
-  }
+    .upsert(
+      {
+        user_id: user.id,
+      },
+      {
+        onConflict: 'user_id',
+      }
+    )
 
   return NextResponse.redirect(`${origin}/guru/home`)
 }
