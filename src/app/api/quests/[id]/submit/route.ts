@@ -28,19 +28,41 @@ export async function POST(
 
     if (!profile) return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
 
-    const { data, error } = await supabase.rpc('submit_quest', {
-      p_student_id: profile.id,
-      p_quest_id:   id,
-      p_answers:    answers,
-      p_score:      score,
-    })
+const { data, error } = await supabase.rpc('submit_quest', {
+  p_student_id: profile.id,
+  p_quest_id: id,
+  p_answers: answers,
+  p_score: score,
+})
 
-    if (error) throw error
+if (error) {
+  console.error("SUPABASE RPC ERROR:", error)
+
+  return NextResponse.json(
+    {
+      error,
+    },
+    { status: 500 }
+  )
+}
+
     return NextResponse.json(data)
-  } catch (err) {
-    if (err instanceof z.ZodError) {
-      return NextResponse.json({ error: err.issues }, { status: 400 })
-    }
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+} catch (err) {
+  console.error("=== SUBMIT QUEST ERROR ===")
+  console.error(err)
+
+  if (err instanceof z.ZodError) {
+    return NextResponse.json(
+      { error: err.issues },
+      { status: 400 }
+    )
   }
+
+  return NextResponse.json(
+    {
+      error: err instanceof Error ? err.message : String(err),
+    },
+    { status: 500 }
+  )
+}
 }

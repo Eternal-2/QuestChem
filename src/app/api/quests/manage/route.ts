@@ -20,17 +20,38 @@ const labContentSchema = z.object({
   expected: z.string(),
 })
 
+// Soal raid boss mirip quiz, tapi pakai correct_index (bukan answer)
+// dan punya field damage — konsisten dengan format yang dibaca
+// PvEClient.tsx
+const bossContentSchema = z.object({
+  question: z.string().min(1),
+  options: z.array(z.string().min(1)).min(2),
+  correct_index: z.number().int().min(0),
+  explanation: z.string(),
+  damage: z.number().int().min(1).max(100),
+})
+
+const raidBossMetaSchema = z.object({
+  name: z.string().min(1),
+  image_emoji: z.string().min(1),
+  weakness: z.string().nullable().optional(),
+  element: z.enum(['fire', 'water', 'earth', 'air', 'metal']),
+  hp_max: z.number().int().min(1).default(100),
+  hp_current: z.number().int().min(1).default(100),
+})
+
 const questSchema = z.object({
   title: z.string().min(1).max(200),
   description: z.string().min(1).max(1000),
-  type: z.enum(['quiz', 'read', 'lab', 'mini_game']),
+  type: z.enum(['quiz', 'read', 'lab', 'mini_game', 'raid_boss']),
   difficulty: z.enum(['easy', 'medium', 'hard']),
   topic: z.string().min(1),
   subtopic: z.string().nullable().optional(),
   xp_reward: z.number().int().min(0).max(10000),
   estimated_minutes: z.number().int().min(1).max(600),
-  content: z.array(z.union([quizContentSchema, readContentSchema, labContentSchema])),
+  content: z.array(z.union([quizContentSchema, readContentSchema, labContentSchema, bossContentSchema])),
   is_published: z.boolean(),
+  raid_boss: raidBossMetaSchema.optional(),
 })
 
 export async function POST(request: Request) {
@@ -52,6 +73,10 @@ export async function POST(request: Request) {
     const body = await request.json()
     const parsed = questSchema.parse(body)
 
+    if (parsed.type === 'raid_boss' && !parsed.raid_boss) {
+      return NextResponse.json({ error: 'Data boss (nama, emoji, elemen) wajib diisi untuk tipe Raid Boss' }, { status: 400 })
+    }
+
     const { data, error } = await supabase
       .from('quests')
       .insert({
@@ -69,7 +94,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: err.issues[0]?.message ?? 'Data tidak valid' }, { status: 400 })
     }
     console.error('Create quest error:', err)
-    return NextResponse.json({ error: 'Terjadi kesalahan server' }, { status: 500 })
+    return NextResponse.json({
+    error: err instanceof Error ? err.message : String(err)
+}, { status: 500 })
   }
 }
 

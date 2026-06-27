@@ -234,37 +234,79 @@ export default function PvEClient({ profile, bosses, battleHistory }: PvEClientP
     setShowExplain(true)
   }
 
-  async function nextQuestion() {
-    if (!selectedBoss) return
-    setSelected(null)
-    setAnswered(false)
-    setShowExplain(false)
+async function nextQuestion() {
+  if (!selectedBoss) return
 
-    const nextIdx = currentQ + 1
-    const totalQ = selectedBoss.content.length
+  setSelected(null)
+  setAnswered(false)
+  setShowExplain(false)
 
-    if (nextIdx >= totalQ || playerHp <= 0 || bossHp <= 0) {
-      // Battle selesai
-      const won = bossHp <= 0 || (correct / totalQ >= 0.6 && playerHp > 0)
-      const finalScore = Math.round((correct / totalQ) * 100)
-      const xpEarned = won ? selectedBoss.xp_reward : Math.round(selectedBoss.xp_reward * 0.2)
-      setResultData({ won, xpEarned, score: finalScore })
-      setPhase('result')
+  const nextIdx = currentQ + 1
+  const totalQ = selectedBoss.content.length
 
-      // Simpan ke DB
-      setSaving(true)
-      try {
-        await fetch(`/api/quests/${selectedBoss.id}/submit`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ answers: [], score: finalScore, xp_earned: xpEarned }),
-        })
-      } catch {}
-      setSaving(false)
-    } else {
-      setCurrentQ(nextIdx)
+  console.log("=== NEXT QUESTION ===")
+  console.log({
+    currentQ,
+    nextIdx,
+    totalQ,
+    bossHp,
+    playerHp,
+    correct,
+  })
+
+  if (nextIdx >= totalQ || playerHp <= 0 || bossHp <= 0) {
+    const won = bossHp <= 0 || (correct / totalQ >= 0.6 && playerHp > 0)
+    const finalScore = Math.round((correct / totalQ) * 100)
+    const xpEarned = won
+      ? selectedBoss.xp_reward
+      : Math.round(selectedBoss.xp_reward * 0.2)
+
+    console.log("Battle selesai")
+    console.log({
+      won,
+      finalScore,
+      xpEarned,
+      questId: selectedBoss.id,
+    })
+
+    setResultData({
+      won,
+      xpEarned,
+      score: finalScore,
+    })
+
+    setPhase("result")
+
+    setSaving(true)
+
+    try {
+      console.log("Mengirim request submit...")
+
+      const res = await fetch(`/api/quests/${selectedBoss.id}/submit`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          answers: [],
+          score: finalScore,
+        }),
+      })
+
+      console.log("Status:", res.status)
+
+      const data = await res.json()
+
+      console.log("Response:", data)
+    } catch (err) {
+      console.error("FETCH ERROR:", err)
     }
+
+    setSaving(false)
+  } else {
+    setCurrentQ(nextIdx)
   }
+}
 
   if (phase === 'select') {
     return (

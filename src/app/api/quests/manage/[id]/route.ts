@@ -20,17 +20,35 @@ const labContentSchema = z.object({
   expected: z.string(),
 })
 
+const bossContentSchema = z.object({
+  question: z.string().min(1),
+  options: z.array(z.string().min(1)).min(2),
+  correct_index: z.number().int().min(0),
+  explanation: z.string(),
+  damage: z.number().int().min(1).max(100),
+})
+
+const raidBossMetaSchema = z.object({
+  name: z.string().min(1),
+  image_emoji: z.string().min(1),
+  weakness: z.string().nullable().optional(),
+  element: z.enum(['fire', 'water', 'earth', 'air', 'metal']),
+  hp_max: z.number().int().min(1).default(100),
+  hp_current: z.number().int().min(1).default(100),
+})
+
 const questUpdateSchema = z.object({
   title: z.string().min(1).max(200),
   description: z.string().min(1).max(1000),
-  type: z.enum(['quiz', 'read', 'lab', 'mini_game']),
+  type: z.enum(['quiz', 'read', 'lab', 'mini_game', 'raid_boss']),
   difficulty: z.enum(['easy', 'medium', 'hard']),
   topic: z.string().min(1),
   subtopic: z.string().nullable().optional(),
   xp_reward: z.number().int().min(0).max(10000),
   estimated_minutes: z.number().int().min(1).max(600),
-  content: z.array(z.union([quizContentSchema, readContentSchema, labContentSchema])),
+  content: z.array(z.union([quizContentSchema, readContentSchema, labContentSchema, bossContentSchema])),
   is_published: z.boolean(),
+  raid_boss: raidBossMetaSchema.optional(),
 })
 
 async function verifyOwnership(supabase: any, userId: string, questId: string) {
@@ -57,6 +75,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
     const body = await request.json()
     const parsed = questUpdateSchema.parse(body)
+
+    if (parsed.type === 'raid_boss' && !parsed.raid_boss) {
+      return NextResponse.json({ error: 'Data boss (nama, emoji, elemen) wajib diisi untuk tipe Raid Boss' }, { status: 400 })
+    }
 
     const { data, error } = await supabase
       .from('quests')

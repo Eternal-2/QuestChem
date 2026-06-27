@@ -14,6 +14,15 @@ const TOPICS = [
 type QuizItem = { question: string; options: string[]; answer: number; explanation: string }
 type ReadItem = { section: string; content: string }
 type LabItem  = { step: number; instruction: string; expected: string }
+type BossQuizItem = { question: string; options: string[]; correct_index: number; explanation: string; damage: number }
+
+const ELEMENTS = [
+  { value: 'fire',  label: '🔥 Api' },
+  { value: 'water', label: '💧 Air' },
+  { value: 'earth', label: '🌍 Tanah' },
+  { value: 'air',   label: '💨 Udara' },
+  { value: 'metal', label: '⚙️ Logam' },
+]
 
 export default function QuestBuilder({ initialQuest }: QuestBuilderProps) {
   const router = useRouter()
@@ -27,6 +36,10 @@ export default function QuestBuilder({ initialQuest }: QuestBuilderProps) {
   const [subtopic, setSubtopic] = useState(initialQuest?.subtopic ?? '')
   const [xpReward, setXpReward] = useState(initialQuest?.xp_reward ?? 50)
   const [estimatedMinutes, setEstimatedMinutes] = useState(initialQuest?.estimated_minutes ?? 10)
+
+  console.log("INITIAL QUEST =", initialQuest)
+  console.log("TYPE DARI DB =", initialQuest?.type)
+  console.log("STATE TYPE =", type)
 
   // Content berbeda bentuk tergantung tipe quest
   const [quizItems, setQuizItems] = useState<QuizItem[]>(
@@ -44,6 +57,18 @@ export default function QuestBuilder({ initialQuest }: QuestBuilderProps) {
       ? (initialQuest.content as unknown as LabItem[])
       : [{ step: 1, instruction: '', expected: '' }]
   )
+
+  // ===== Raid Boss state =====
+  const existingRaidBoss = (initialQuest as any)?.raid_boss ?? {}
+  const [bossItems, setBossItems] = useState<BossQuizItem[]>(
+    type === 'raid_boss' && initialQuest?.content
+      ? (initialQuest.content as unknown as BossQuizItem[])
+      : [{ question: '', options: ['', ''], correct_index: 0, explanation: '', damage: 25 }]
+  )
+  const [bossName, setBossName] = useState(existingRaidBoss.name ?? '')
+  const [bossEmoji, setBossEmoji] = useState(existingRaidBoss.image_emoji ?? '👾')
+  const [bossWeakness, setBossWeakness] = useState(existingRaidBoss.weakness ?? '')
+  const [bossElement, setBossElement] = useState(existingRaidBoss.element ?? 'fire')
 
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -100,10 +125,41 @@ export default function QuestBuilder({ initialQuest }: QuestBuilderProps) {
     setLabItems(prev => prev.map((l, i) => (i === idx ? { ...l, ...patch } : l)))
   }
 
+  // ===== Raid Boss handlers =====
+  function addBossItem() {
+    setBossItems(prev => [...prev, { question: '', options: ['', ''], correct_index: 0, explanation: '', damage: 25 }])
+  }
+  function removeBossItem(idx: number) {
+    setBossItems(prev => prev.filter((_, i) => i !== idx))
+  }
+  function updateBossItem(idx: number, patch: Partial<BossQuizItem>) {
+    setBossItems(prev => prev.map((q, i) => (i === idx ? { ...q, ...patch } : q)))
+  }
+  function addBossOption(qIdx: number) {
+    setBossItems(prev => prev.map((q, i) => (i === qIdx ? { ...q, options: [...q.options, ''] } : q)))
+  }
+  function removeBossOption(qIdx: number, oIdx: number) {
+    setBossItems(prev => prev.map((q, i) => {
+      if (i !== qIdx) return q
+      const newOptions = q.options.filter((_, oi) => oi !== oIdx)
+      const newCorrect = q.correct_index >= newOptions.length ? 0 : q.correct_index
+      return { ...q, options: newOptions, correct_index: newCorrect }
+    }))
+  }
+  function updateBossOption(qIdx: number, oIdx: number, value: string) {
+    setBossItems(prev => prev.map((q, i) => {
+      if (i !== qIdx) return q
+      const newOptions = [...q.options]
+      newOptions[oIdx] = value
+      return { ...q, options: newOptions }
+    }))
+  }
+
   function getContent(): QuestContent[] {
     if (type === 'quiz') return quizItems as unknown as QuestContent[]
     if (type === 'read') return readItems as unknown as QuestContent[]
     if (type === 'lab') return labItems as unknown as QuestContent[]
+    if (type === 'raid_boss') return bossItems as unknown as QuestContent[]
     return []
   }
 
@@ -131,6 +187,16 @@ export default function QuestBuilder({ initialQuest }: QuestBuilderProps) {
         if (!l.instruction.trim()) return `Langkah #${i + 1}: instruksi tidak boleh kosong`
       }
     }
+    if (type === 'raid_boss') {
+      if (!bossName.trim()) return 'Nama boss tidak boleh kosong'
+      if (bossItems.length === 0) return 'Tambahkan minimal 1 soal serangan'
+      for (const [i, q] of bossItems.entries()) {
+        if (!q.question.trim()) return `Soal #${i + 1}: pertanyaan tidak boleh kosong`
+        if (q.options.some(o => !o.trim())) return `Soal #${i + 1}: semua pilihan jawaban harus diisi`
+        if (q.options.length < 2) return `Soal #${i + 1}: minimal 2 pilihan jawaban`
+        if (q.damage <= 0) return `Soal #${i + 1}: damage harus lebih dari 0`
+      }
+    }
     return null
   }
 
@@ -144,7 +210,7 @@ export default function QuestBuilder({ initialQuest }: QuestBuilderProps) {
     setSaving(true)
     setError(null)
 
-    const payload = {
+    const payload: any = {
       title: title.trim(),
       description: description.trim(),
       type,
@@ -155,6 +221,17 @@ export default function QuestBuilder({ initialQuest }: QuestBuilderProps) {
       estimated_minutes: estimatedMinutes,
       content: getContent(),
       is_published: publish,
+    }
+
+    if (type === 'raid_boss') {
+      payload.raid_boss = {
+        name: bossName.trim(),
+        image_emoji: bossEmoji,
+        weakness: bossWeakness.trim() || null,
+        element: bossElement,
+        hp_max: 100,
+        hp_current: 100,
+      }
     }
 
     try {
@@ -229,6 +306,7 @@ export default function QuestBuilder({ initialQuest }: QuestBuilderProps) {
               <option value="quiz">📝 Quiz</option>
               <option value="read">📖 Bacaan</option>
               <option value="lab">🔬 Lab Terbimbing</option>
+              <option value="raid_boss">🐉 Raid Boss</option>
             </select>
           </div>
 
@@ -455,6 +533,152 @@ export default function QuestBuilder({ initialQuest }: QuestBuilderProps) {
             </div>
           ))}
         </div>
+      )}
+
+      {type === 'raid_boss' && (
+        <>
+          {/* Metadata Boss */}
+          <div className="bg-slate-900/60 backdrop-blur border border-orange-500/20 rounded-2xl p-5 space-y-4">
+            <h3 className="font-bold text-white text-sm flex items-center gap-2">
+              <span>🐉</span> Identitas Boss
+            </h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="col-span-2">
+                <label className="block text-xs font-medium text-slate-400 mb-1.5">Nama Boss</label>
+                <input
+                  type="text"
+                  value={bossName}
+                  onChange={e => setBossName(e.target.value)}
+                  placeholder="Contoh: Naga Asam Sulfat"
+                  className="w-full px-3 py-2 bg-slate-800/60 border border-slate-700/50 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500/50"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1.5">Emoji Boss</label>
+                <input
+                  type="text"
+                  value={bossEmoji}
+                  onChange={e => setBossEmoji(e.target.value)}
+                  placeholder="🐉"
+                  maxLength={4}
+                  className="w-full px-3 py-2 bg-slate-800/60 border border-slate-700/50 rounded-xl text-sm text-white text-center text-lg focus:outline-none focus:ring-2 focus:ring-orange-500/50"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1.5">Elemen</label>
+                <select
+                  value={bossElement}
+                  onChange={e => setBossElement(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-800/60 border border-slate-700/50 rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50"
+                >
+                  {ELEMENTS.map(el => <option key={el.value} value={el.value}>{el.label}</option>)}
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1.5">Kelemahan Boss (opsional, untuk hint siswa)</label>
+              <input
+                type="text"
+                value={bossWeakness}
+                onChange={e => setBossWeakness(e.target.value)}
+                placeholder="Contoh: basa"
+                className="w-full px-3 py-2 bg-slate-800/60 border border-slate-700/50 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500/50"
+              />
+            </div>
+            <p className="text-xs text-slate-500">
+              💡 HP boss otomatis 100, dan akan berkurang sesuai damage tiap soal yang dijawab benar oleh siswa.
+            </p>
+          </div>
+
+          {/* Soal Serangan */}
+          <div className="bg-slate-900/60 backdrop-blur border border-slate-700/50 rounded-2xl p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-white text-sm flex items-center gap-2">
+                <span>⚔️</span> Soal Serangan ({bossItems.length})
+              </h3>
+              <button
+                onClick={addBossItem}
+                className="text-xs font-semibold text-orange-400 hover:text-orange-300 bg-orange-500/10 border border-orange-500/30 px-3 py-1.5 rounded-lg transition-colors"
+              >
+                + Tambah Soal
+              </button>
+            </div>
+
+            {bossItems.map((q, qIdx) => (
+              <div key={qIdx} className="bg-slate-800/40 border border-slate-700/30 rounded-xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-slate-400">Soal #{qIdx + 1}</span>
+                  {bossItems.length > 1 && (
+                    <button onClick={() => removeBossItem(qIdx)} className="text-xs text-red-400 hover:text-red-300">
+                      Hapus
+                    </button>
+                  )}
+                </div>
+
+                <textarea
+                  value={q.question}
+                  onChange={e => updateBossItem(qIdx, { question: e.target.value })}
+                  placeholder="Tulis pertanyaan di sini..."
+                  rows={2}
+                  className="w-full px-3 py-2 bg-slate-900/60 border border-slate-700/50 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500/50 resize-none"
+                />
+
+                <div className="space-y-2">
+                  <label className="text-xs text-slate-400">Pilihan jawaban (klik radio untuk tandai jawaban benar)</label>
+                  {q.options.map((opt, oIdx) => (
+                    <div key={oIdx} className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name={`boss-answer-${qIdx}`}
+                        checked={q.correct_index === oIdx}
+                        onChange={() => updateBossItem(qIdx, { correct_index: oIdx })}
+                        className="w-4 h-4 accent-orange-500 flex-shrink-0"
+                      />
+                      <input
+                        type="text"
+                        value={opt}
+                        onChange={e => updateBossOption(qIdx, oIdx, e.target.value)}
+                        placeholder={`Pilihan ${String.fromCharCode(65 + oIdx)}`}
+                        className="flex-1 px-3 py-1.5 bg-slate-900/60 border border-slate-700/50 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500/50"
+                      />
+                      {q.options.length > 2 && (
+                        <button onClick={() => removeBossOption(qIdx, oIdx)} className="text-slate-500 hover:text-red-400 text-sm flex-shrink-0">
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => addBossOption(qIdx)}
+                    className="text-xs text-slate-400 hover:text-slate-300"
+                  >
+                    + Tambah pilihan
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <label className="text-xs text-slate-400 flex-shrink-0">Damage ke boss kalau benar</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={100}
+                    value={q.damage}
+                    onChange={e => updateBossItem(qIdx, { damage: parseInt(e.target.value) || 0 })}
+                    className="w-20 px-3 py-1.5 bg-slate-900/60 border border-slate-700/50 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50"
+                  />
+                </div>
+
+                <textarea
+                  value={q.explanation}
+                  onChange={e => updateBossItem(qIdx, { explanation: e.target.value })}
+                  placeholder="Penjelasan jawaban (tampil setelah siswa menjawab)"
+                  rows={2}
+                  className="w-full px-3 py-2 bg-slate-900/60 border border-slate-700/50 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500/50 resize-none"
+                />
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       {/* Actions */}
