@@ -130,7 +130,7 @@ export default function GuruProfileClient({
           <div className="w-full space-y-2 text-left">
             <div className="flex items-center gap-2 p-2.5 bg-slate-800/40 border border-slate-700/30 rounded-xl">
               <span className="text-slate-500 text-sm">📧</span>
-              <span className="text-xs text-slate-400 truncate">{userData?.email ?? '-' }</span>
+              <span className="text-xs text-slate-400 truncate">{userData?.email ?? 'Tidak ada email' }</span>
             </div>
             <div className="flex items-center gap-2 p-2.5 bg-slate-800/40 border border-slate-700/30 rounded-xl">
               <span className="text-slate-500 text-sm">📅</span>
